@@ -1,0 +1,280 @@
+---
+import flywheelSvg from "../../public/images/FLYWHEEL_OUTLINE.svg?raw";
+const shape = flywheelSvg.match(/<mask[^>]*>\s*<path d="([^"]+)"/)?.[1];
+
+const HUB = { x: 886.69, y: 596.21 };
+const VIEW = { w: 1728, h: 1117 };
+const viewBox = `${HUB.x - VIEW.w / 2} ${HUB.y - VIEW.h / 2} ${VIEW.w} ${VIEW.h}`;
+
+const headline = "We deliver large-scale renewable energy within hours, not years.";
+import { MuxPlayer } from "@mux/mux-player-astro";
+import { clipPlaybackId, clipPoster } from "../lib/mux";
+---
+
+<section
+    data-flywheel
+    class="relative z-10 grid h-lvh place-items-center overflow-hidden bg-sand text-center text-green"
+>
+    <!-- The wrapper positions: it covers the section like the old 16:9 frames
+         did, and in portrait turns a quarter-turn so the wheel still fills the
+         screen. GSAP only ever touches the <svg> inside, because tweening a
+         transform bakes the element's translate/rotate into fixed pixels,
+         which would stop this centring from following a resize. -->
+    <div class="pointer-events-none absolute top-1/2 left-1/2 h-full w-full -translate-1/2 portrait:h-[100vw] portrait:w-[100lvh] portrait:-rotate-90">
+        <svg
+            data-flywheel-svg
+            aria-hidden="true"
+            viewBox={viewBox}
+
+            preserveAspectRatio="xMidYMid slice"
+            overflow="visible"
+            class="size-full opacity-0"
+        >
+            <defs>
+                <clipPath id="flywheel-clip">
+                    <path d={shape} />
+                </clipPath>
+            </defs>
+            <path
+                data-flywheel-stroke
+                d={shape}
+                clip-path="url(#flywheel-clip)"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="0"
+                stroke-linejoin="miter"
+            />
+        </svg>
+    </div>
+
+    <!-- The video section: clipped to nothing at the bottom edge until stage
+         2 wipes it in from the bottom, video and text together, while the
+         inner layer rises into place. It sits before the wordmark so the
+         letters stay on top while they hide.
+
+         The exit layer around it is what the scroll-out shrinks back into a
+         window (see the script), kept apart from the intro's clip and scale. -->
+    <div data-flywheel-exit class="absolute inset-0">
+        <div
+            data-flywheel-reveal
+            style="clip-path: inset(100% 0 0 0)"
+            class="absolute inset-0 overflow-hidden"
+        >
+            <div data-flywheel-rise class="absolute inset-0">
+                <!-- The wrapper carries the parallax so it doesn't clash with the clip -->
+                <div data-parallax="20" class="pointer-events-none absolute inset-0">
+                    <MuxPlayer
+                        data-flywheel-video
+                        playback-id={clipPlaybackId("intro")}
+                        poster={clipPoster("intro")}
+                        preload="auto"
+                        muted
+                        loop
+                        min-resolution="1080p"
+                        playsinline
+                        nohotkeys
+                        class="pointer-events-none absolute inset-0 block size-full [--media-object-fit:cover]"
+                    />
+                </div>
+
+                <!-- Each line rises out of its own mask with the wipe, bottom line
+                     first. Hidden until SplitText has split it; 17em wide so it
+                     breaks after "renewable", as in the design. -->
+                <p
+                    data-flywheel-copy
+                    class="absolute inset-x-4 bottom-[75px] max-w-[17em] text-left text-lede leading-[1.1] font-medium tracking-[-0.03em] text-white md:inset-x-5 md:bottom-[94px]"
+                >
+                    <span class="sr-only">{headline}</span>
+                    <span aria-hidden="true" data-headline class="invisible">
+                        {headline}
+                    </span>
+                </p>
+
+                <!-- The scroll cue: a hairline rule, then SCROLL TO EXPLORE with a
+                     down arrow at the right -->
+                <div
+                    data-flywheel-copy
+                    class="absolute inset-x-4 bottom-5 flex items-center justify-between border-t border-white/50 pt-[18px] text-white md:inset-x-5 md:bottom-10"
+                >
+                    <span class="text-caption leading-[1.1] font-medium tracking-[-0.04em] uppercase">
+                        Scroll to explore
+                    </span>
+                    <svg aria-hidden="true" viewBox="0 0 8 9" class="w-[0.67em] text-caption">
+                        <path
+                            fill="currentColor"
+                            d="M3.33027 7.98269C3.52565 8.17782 3.84224 8.17762 4.03737 7.98223L7.21732 4.79822C7.41245 4.60283 7.41225 4.28625 7.21686 4.09111C7.02148 3.89597 6.70489 3.89618 6.50976 4.09156L3.68314 6.9218L0.852905 4.09518C0.657518 3.90005 0.340935 3.90025 0.145798 4.09564C-0.0493392 4.29102 -0.0491365 4.60761 0.146251 4.80274L3.33027 7.98269ZM3.67871 0L3.17871 0.000320068L3.18359 7.62923L3.68359 7.62891L4.18359 7.62859L4.17871 -0.000320068L3.67871 0Z"
+                        />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h1 aria-label="Energy Club" class="relative text-wordmark font-black uppercase max-md:mt-2.5">
+        <span aria-hidden="true" data-split data-intro data-from="bottom" data-duration="0.6">
+            Energy
+        </span>
+        <span aria-hidden="true" data-split data-intro data-reverse data-duration="0.6">
+            Club
+        </span>
+    </h1>
+</section>
+
+<script>
+    import "@mux/mux-video";
+    import { gsap } from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+    import { SplitText } from "gsap/SplitText";
+    import { createSplit, prefersReducedMotion } from "../scripts/split";
+    import { POWER_WINDOW, videoWindow } from "../scripts/video-window";
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    const OUTLINE = 20; // the thin outline: 10 units visible, as in the Figma file
+    const FILL = 400; // past twice the thickest arm (~173), so the shape is solid
+
+    const OUTLINE_IN = 1;
+    const FLOOD = 0.5;
+    const TITLE_AT = 1;
+
+    // Stage 2: the beat the wordmark holds for before it hides
+    const HOLD = 0.8;
+    // How far each headline line trails the one below it
+    const LINE_STAGGER = 0.1;
+    // How far below its place the video section starts, as a % of its height
+    const RISE = 40;
+
+    const section = document.querySelector<HTMLElement>("[data-flywheel]")!;
+    const svg = section.querySelector<SVGSVGElement>("[data-flywheel-svg]")!;
+    const stroke = section.querySelector<SVGPathElement>("[data-flywheel-stroke]")!;
+    const reveal = section.querySelector<HTMLElement>("[data-flywheel-reveal]")!;
+    const rise = section.querySelector<HTMLElement>("[data-flywheel-rise]")!;
+    const video = section.querySelector<HTMLVideoElement>("[data-flywheel-video]")!;
+    const headline = section.querySelector<HTMLElement>("[data-headline]")!;
+    const copy = section.querySelectorAll<HTMLElement>("[data-flywheel-copy]");
+
+    /**
+     * The scroll-out into Let's power, which sits underneath this section
+     * (pulled up by a screen, see LetsPower). The section is pinned for one
+     * screen of scroll while the headline and scroll cue drop away and the
+     * video shrinks into a small window in the middle, uncovering Let's power
+     * around it as its list starts to reveal.
+     *
+     * The whole section is clipped to the window, and Let's power has its own
+     * window of exactly that size waiting underneath with the next clip. So
+     * the moment the pin lets go this section is hidden, and that window is
+     * left in its place: a hard cut on the smallest frame. (Hidden rather than
+     * left to scroll off, because a released pin carries on scrolling from
+     * where it was held, which would slide the window up the screen.)
+     */
+    if (!prefersReducedMotion()) {
+        const exit = videoWindow(
+            section,
+            section.querySelector<HTMLElement>("[data-flywheel-exit]")!,
+            POWER_WINDOW.width,
+            POWER_WINDOW.min,
+        );
+        exit.state.grow = 1;
+
+        gsap.timeline({
+            scrollTrigger: {
+                trigger: section,
+                start: "top top",
+                end: "+=100%",
+                pin: true,
+                pinSpacing: false,
+                scrub: true,
+                onLeave: () => {
+                    gsap.set(section, { visibility: "hidden" });
+                    video.pause();
+                },
+                onEnterBack: () => {
+                    gsap.set(section, { visibility: "visible" });
+                    void video.play().catch(() => {});
+                },
+            },
+            onUpdate: exit.render,
+        })
+            .to(copy, { y: 40, autoAlpha: 0, duration: 0.25, ease: "power2.in" }, 0)
+            .to(exit.state, { grow: 0, duration: 1, ease: "power3.inOut" }, 0);
+    }
+
+    document.fonts.ready.then(() => {
+        const titles = Array.from(section.querySelectorAll<HTMLElement>("[data-intro]")).map(
+            createSplit,
+        );
+        const playTitles = () => titles.forEach((tl) => tl.play());
+        const hideTitles = () => titles.forEach((tl) => tl.reverse());
+
+        // The longest line's reveal, which its reverse also takes
+        const titleLength = Math.max(...titles.map((tl) => tl.duration()));
+        const HIDE_AT = TITLE_AT + titleLength + HOLD;
+        const WIPE = titleLength + 0.3;
+
+        // Straight to where the intro ends: all green, wordmark hidden
+        if (prefersReducedMotion()) {
+            gsap.set(stroke, { attr: { "stroke-width": FILL } });
+            gsap.set(svg, { opacity: 1 });
+            // Shown full screen, but left on its poster frame rather than autoplaying
+            gsap.set(reveal, { clipPath: "inset(0% 0% 0% 0%)" });
+            gsap.set(headline, { visibility: "visible" });
+            return;
+        }
+
+        // Each line rises out of its own mask. Once it's in, the split is
+        // undone so the text can rewrap on resize.
+        const split = SplitText.create(headline, { type: "lines", mask: "lines" });
+
+        gsap.timeline()
+            .fromTo(
+                svg,
+                { opacity: 0, scale: 1.2 },
+                { opacity: 1, scale: 1, duration: 1, ease: "power2.out" },
+                0,
+            )
+            .fromTo(
+                stroke,
+                { attr: { "stroke-width": 0 } },
+                { attr: { "stroke-width": OUTLINE }, duration: OUTLINE_IN, ease: "power1.out" },
+                0,
+            )
+            // Accelerating ease: thickens gradually, then snaps to solid
+            .to(stroke, { attr: { "stroke-width": FILL }, duration: FLOOD, ease: "expo.in" })
+            .call(playTitles, [], TITLE_AT)
+            // Stage 2: as the wordmark hides, the video section wipes in from
+            // the bottom and rises into place, starting and finishing with
+            // the letters
+            .call(hideTitles, [], HIDE_AT)
+            .call(() => void video.play().catch(() => {}), [], HIDE_AT)
+            .fromTo(
+                reveal,
+                { clipPath: "inset(100% 0% 0% 0%)" },
+                { clipPath: "inset(0% 0% 0% 0%)", duration: WIPE, ease: "expo.inOut" },
+                HIDE_AT,
+            )
+            .fromTo(
+                rise,
+                { scale: 0.67 },
+                { scale: 1, duration: WIPE - 0.1, delay: 0, ease: "expo.inOut" },
+                HIDE_AT,
+            )
+            // The headline's lines rise with the wipe, bottom line first, all
+            // landing as it finishes
+            .fromTo(
+                split.lines,
+                { yPercent: 110 },
+                {
+                    yPercent: 0,
+                    delay: 0.55,
+                    duration: 0.75,
+                    stagger: -0.105,
+                    ease: "expo.out",
+                    onComplete: () => split.revert(),
+                },
+                HIDE_AT,
+            );
+
+        // The lines now sit below their masks, so the headline can be shown
+        gsap.set(headline, { visibility: "visible" });
+    });
+</script>

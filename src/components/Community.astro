@@ -1,0 +1,254 @@
+---
+import { Image } from "astro:assets";
+import MuxClip from "./MuxClip.astro";
+import bike from "../assets/carousel/bike.jpg";
+import station from "../assets/carousel/solar-station.jpg";
+import crowd from "../assets/carousel/crowd.jpg";
+import solarpunks from "../assets/solarpunks.png";
+
+/**
+ * Photo carousel on black, then the third video: a small window that grows
+ * to fill the screen as you scroll through its sticky frame.
+ *
+ * The carousel screen is pulled up over the last screen of Let's power and
+ * starts see-through, stuck in place. As you scroll, black columns rise up
+ * one after another over WITH THE SUN, which drifts up behind them; once
+ * they've closed, the photos wipe up in turn and the copy rises in.
+ *
+ * It holds for a screen, then hands over to the third video, which sits
+ * underneath (pulled up a screen) with its window on the centre photo: the
+ * carousel closes in onto that photo and the copy drops out, then this
+ * section is hidden, cutting to the video in the same frame. The window then
+ * grows from there to fill the screen.
+ *
+ * The carousel is a native scroll-snap strip, so it swipes and trackpad-scrolls
+ * for free; clicking a side photo brings it to the centre. It opens on the
+ * middle photo, as in the storyboard.
+ */
+const photos = [
+    { src: bike, alt: "A cyclist riding past a solar array on the playa" },
+    { src: station, alt: "Energy Club's Solar Station, with bikes parked around it" },
+    { src: crowd, alt: "A crowd dancing at dusk" },
+];
+
+const COLUMNS = 6;
+---
+
+<section data-community class="relative z-10 -mt-[200lvh] h-[400lvh]">
+    <!-- Where the nav's Solarpunks link lands: once the transition is done -->
+    <span id="solarpunks" class="absolute top-[100lvh]"></span>
+
+    <div
+        data-community-frame
+        class="sticky top-0 flex h-lvh flex-col justify-center overflow-hidden text-center"
+    >
+        <!-- The black comes in as columns; each overlaps the next by a pixel so no
+             seams show between them -->
+        <div aria-hidden="true" class="absolute inset-0 flex">
+            {Array.from({ length: COLUMNS }, () => (
+                <div data-community-column class="-mr-px h-full flex-1 bg-black" />
+            ))}
+        </div>
+
+        <div
+            data-carousel
+            class="relative flex snap-x snap-mandatory gap-3 overflow-x-auto px-[calc((100%-var(--slide))/2)] [--slide:80vw] [scrollbar-width:none] md:[--slide:40vw]"
+        >
+            {photos.map(({ src, alt }) => (
+                <div
+                    data-community-slide
+                    class="aspect-[3/2] w-(--slide) shrink-0 cursor-pointer snap-center overflow-hidden"
+                >
+                    <Image
+                        src={src}
+                        alt={alt}
+                        widths={[640, 960, 1280, 1674]}
+                        sizes="(min-width: 768px) 48.4vw, 80vw"
+                        data-parallax="20"
+                        class="size-full object-cover"
+                    />
+                </div>
+            ))}
+        </div>
+
+        <p
+            data-community-copy
+            class="relative mx-auto mt-[clamp(2.5rem,5vw,3.5rem)] max-w-[calc(40.3em+2rem)] px-4 text-small leading-[0.9] font-medium tracking-[-0.03em] uppercase"
+        >
+            Clean electrons gifted to community organizations, artists and fire disaster relief with
+            every Energy Club deployment via
+        </p>
+        <Image
+            src={solarpunks}
+            alt="Solarpunks"
+            width={416}
+            data-community-copy
+            class="relative mx-auto mt-4 h-auto w-[clamp(8.5rem,10vw,13rem)]"
+        />
+    </div>
+</section>
+
+<section data-night data-parallax-root class="relative -mt-[100lvh] h-[250lvh] bg-black">
+    <!-- The footer's curtain holds this still and lifts its bottom edge -->
+    <div data-night-frame class="sticky top-0 h-lvh overflow-hidden">
+        <!-- Clipped by script to the centre photo's frame, which it grows from -->
+        <div data-window class="absolute inset-0">
+            <div data-window-media class="absolute inset-0">
+                <MuxClip data-night-video data-parallax clip="night" class="size-full" />
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    import { gsap } from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+    import { prefersReducedMotion } from "../scripts/split";
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Carousel: open on the middle photo; a click on a side photo centres it
+    const strip = document.querySelector<HTMLElement>("[data-carousel]")!;
+    const slides = Array.from(strip.children) as HTMLElement[];
+    const centre = (slide: HTMLElement, behavior: ScrollBehavior) =>
+        strip.scrollTo({
+            left: slide.offsetLeft - (strip.clientWidth - slide.clientWidth) / 2,
+            behavior,
+        });
+    centre(slides[Math.floor(slides.length / 2)], "instant");
+    slides.forEach((slide) =>
+        slide.addEventListener("click", () =>
+            centre(slide, prefersReducedMotion() ? "instant" : "smooth"),
+        ),
+    );
+
+    // The photo the strip is centred on, which may not be the middle one if
+    // it's been swiped
+    const centred = () => {
+        const mid = strip.scrollLeft + strip.clientWidth / 2;
+        const offset = (slide: HTMLElement) =>
+            Math.abs(slide.offsetLeft + slide.clientWidth / 2 - mid);
+        return slides.reduce((a, b) => (offset(b) < offset(a) ? b : a));
+    };
+
+    // The transition in, over the last screen of Let's power
+    const community = document.querySelector<HTMLElement>("[data-community]")!;
+    const frame = community.querySelector<HTMLElement>("[data-community-frame]")!;
+    const columns = community.querySelectorAll("[data-community-column]");
+    const photos = community.querySelectorAll("[data-community-slide]");
+    const copy = community.querySelectorAll("[data-community-copy]");
+
+    if (!prefersReducedMotion()) {
+        // Durations are shares of the scroll, not seconds
+        gsap.timeline({
+            scrollTrigger: {
+                trigger: community,
+                start: "top top",
+                end: "+=100%",
+                scrub: true,
+            },
+        })
+            .fromTo(
+                columns,
+                { yPercent: 100 },
+                { yPercent: 0, duration: 0.6, stagger: 0.08, ease: "power3.inOut" },
+                0,
+            )
+            .fromTo(
+                "[data-power-frame]",
+                { yPercent: 0 },
+                { yPercent: -15, duration: 1, ease: "power1.in" },
+                0,
+            )
+            .fromTo(
+                photos,
+                { clipPath: "inset(100% 0% 0% 0%)" },
+                { clipPath: "inset(0% 0% 0% 0%)", duration: 0.5, stagger: 0.1, ease: "expo.out" },
+                0.7,
+            )
+            .fromTo(
+                copy,
+                { y: 40, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: 0.4, stagger: 0.08, ease: "power3.out" },
+                0.95,
+            );
+    }
+
+    // The centre photo's distance in px from each edge of the screen, as it
+    // sits while the carousel's frame is stuck (measured against the frame,
+    // so it holds wherever the page has scrolled to)
+    const photoInset = () => {
+        const f = frame.getBoundingClientRect();
+        const p = centred().getBoundingClientRect();
+        return {
+            top: p.top - f.top,
+            right: f.right - p.right,
+            bottom: f.bottom - p.bottom,
+            left: p.left - f.left,
+        };
+    };
+
+    // Third video. Its window starts on the centre photo's frame and grows
+    // to fill the screen.
+    const section = document.querySelector<HTMLElement>("[data-night]")!;
+    const video = section.querySelector<HTMLVideoElement>("[data-night-video]")!;
+    const nightWindow = section.querySelector<HTMLElement>("[data-window]")!;
+    const night = { grow: 0 };
+    const renderNight = () => {
+        const r = photoInset();
+        const k = 1 - night.grow;
+        nightWindow.style.clipPath = `inset(${r.top * k}px ${r.right * k}px ${r.bottom * k}px ${r.left * k}px)`;
+    };
+    window.addEventListener("resize", renderNight);
+    renderNight();
+
+    // The hand-over: the carousel closes in onto the centre photo (the strip
+    // spans the screen, so the photo's side insets are the strip's too) and
+    // the copy drops out. When it ends this section is hidden, leaving the
+    // video's window in the photo's place.
+    if (!prefersReducedMotion()) {
+        const close = { progress: 0 };
+
+        gsap.timeline({
+            scrollTrigger: {
+                trigger: community,
+                start: "top -200%", // after a screen's hold
+                end: "top -300%", // as the frame lets go
+                scrub: true,
+                onLeave: () => gsap.set(community, { visibility: "hidden" }),
+                onEnterBack: () => gsap.set(community, { visibility: "visible" }),
+            },
+            onUpdate: () => {
+                const r = photoInset();
+                strip.style.clipPath = `inset(0px ${r.right * close.progress}px 0px ${r.left * close.progress}px)`;
+                // Keeps the video's window on the photo, in case it's moved
+                // since (the fonts loading can nudge it)
+                renderNight();
+            },
+        })
+            .to(close, { progress: 1, duration: 1, ease: "expo.inOut" }, 0)
+            .to(copy, { y: 40, autoAlpha: 0, duration: 0.4, stagger: 0.05, ease: "power2.in" }, 0);
+    }
+
+    ScrollTrigger.create({
+        trigger: section,
+        start: "top bottom",
+        end: "bottom top",
+        onToggle: ({ isActive }) => (isActive ? video.play().catch(() => {}) : video.pause()),
+    });
+
+    if (prefersReducedMotion()) {
+        night.grow = 1;
+        renderNight();
+    } else {
+        gsap.timeline({
+            scrollTrigger: {
+                trigger: section,
+                start: "top top",
+                end: "bottom bottom",
+                scrub: true,
+            },
+            onUpdate: renderNight,
+        }).to(night, { grow: 1, duration: 1.2, ease: "power1.inOut" });
+    }
+</script>

@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* Modern Gothic — the two cuts the original site shipped. Medium is the body
+   weight, Black is every uppercase display line. */
+@font-face {
+    font-family: "Modern Gothic";
+    src:
+        url("/fonts/ModernGothic-Medium.woff2") format("woff2"),
+        url("/fonts/ModernGothic-Medium.woff") format("woff");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Modern Gothic";
+    src:
+        url("/fonts/ModernGothic-Black.woff2") format("woff2"),
+        url("/fonts/ModernGothic-Black.woff") format("woff");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@theme {
+    /* Palette, carried over as-is from the original colors.css */
+    --color-black: #161a1e;
+    --color-green: #d3ff2c;
+    --color-brown: #383730;
+    --color-sand: #a8a888;
+    /* The footer's type and the navbar over it (Figma) */
+    --color-olive: #35400b;
+
+    --font-sans: "Modern Gothic", ui-sans-serif, system-ui, sans-serif;
+
+    /* Fluid type scale. Each size eases between a phone floor and a desktop
+     ceiling, so nothing jumps at a breakpoint. */
+    --text-caption: clamp(0.75rem, 0.7rem + 0.15vw, 0.8125rem); /* 12 → 13 */
+    --text-small: clamp(0.8125rem, 0.75rem + 0.15vw, 0.875rem); /* 13 → 14 */
+    --text-label: clamp(0.875rem, 1.04vw, 1.125rem); /* 14 → 18 */
+    --text-lede: clamp(1.5rem, 0.9rem + 3vw, 3rem); /* 24 → 48 */
+    /* Sits in the flywheel's hub, which scales with the longer screen side */
+    --text-wordmark: clamp(1.5rem, 2.5vmax, 3.5rem); /* 24 → 72 */
+    /* As large as fits: CONSTRUCTION SITES (~11.6em) across the gutters, and
+       the five lines under the window (4.5em) in the bottom half, with a
+       little room to spare below */
+    --text-list: max(
+        1.5rem,
+        min((100vw - 2rem) / 11.8, (50svh - var(--power-offset) - 7svh) / 4.5)
+    );
+    /* Fitted to its container's width; WITH THE SUN. is about 7.7em wide in
+       Black at -2% tracking (see LetsPower) */
+    --text-sun: calc(100cqi / 7.8);
+    /* The footer ENERGY / CLUB, filling the space beside the logo. ENERGY is
+       about 4.2em wide; the footer script then fits it exactly. */
+    --text-lockup: calc(100cqi / 4.3);
+
+    /* The original site leaned on these two curves everywhere */
+    --ease-power2-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+    --ease-power3-out: cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+/* Let's power splits its list around the video window at its smallest:
+   180px wide at 1728, 12px from each half (Figma). The script sizes the
+   window from the same numbers (POWER_WINDOW in video-window.ts). */
+:root {
+    --power-window: max(100vw * 180 / 1728, 128px);
+    --power-gap: max(100vw * 12 / 1728, 0.5rem);
+    /* From the middle of the screen to each half of the list */
+    --power-offset: calc(var(--power-window) * 9 / 32 + var(--power-gap));
+}
+
+@layer base {
+    html {
+        font-weight: 500;
+        line-height: 1;
+    }
+
+    body {
+        background-color: var(--color-sand);
+        color: white;
+    }
+
+    ::selection {
+        background-color: var(--color-green);
+        color: var(--color-black);
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: var(--color-brown);
+    }
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--color-green);
+    }
+}
+
+/* Split lines stay hidden until SplitText has run, so the unsplit word never
+   flashes before the intro. Uppercase lines sit tight, as on the old site. */
+[data-split] {
+    display: block;
+    overflow: hidden;
+    line-height: 0.8;
+    visibility: hidden;
+}
+[data-split].is-split {
+    visibility: visible;
+}
+[data-split] + [data-split] {
+    margin-top: 0.12em;
+}
+
+/* Every video is a background clip: no controls, spinner, play button or
+   error dialog, ever */
+mux-player {
+    --controls: none;
+    --controls-backdrop-color: transparent;
+    --loading-indicator: none;
+    --dialog: none;
+}

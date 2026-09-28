@@ -1,0 +1,34 @@
+---
+import { clipPlaybackId, clipPoster, type Clip } from "../lib/mux";
+import { MuxPlayer } from "@mux/mux-player-astro";
+
+/**
+ * One cut of the Mux reel as a muted, looping, inline background video that
+ * covers its box. It doesn't autoplay: the section driving it calls play().
+ */
+interface Props {
+    clip: Clip;
+    class?: string;
+    preload?: "auto" | "metadata" | "none";
+    [attr: string]: unknown;
+}
+
+const { clip, class: className, preload = "none", ...attrs } = Astro.props;
+---
+
+<MuxPlayer
+    playback-id={clipPlaybackId(clip)}
+    poster={clipPoster(clip)}
+    preload={preload}
+    min-resolution="1080p"
+    muted
+    loop
+    playsinline
+    nohotkeys
+    class:list={["pointer-events-none block [--media-object-fit:cover]", className]}
+    {...attrs}
+/>
+
+<script>
+    import "@mux/mux-video";
+</script>

@@ -1,0 +1,374 @@
+---
+import Logo from "./Logo.astro";
+
+/**
+ * Green footer, a full screen: the email up top, and the logo and ENERGY /
+ * CLUB lockup spanning the bottom edge. Everything is sized in vw off the
+ * 1728-wide Figma frame, so the lockup always fills the width.
+ *
+ * It's revealed like a curtain lifting: the panel and the night video both
+ * hold still while the video's bottom edge lifts like a mask, and a shade
+ * over the panel lifts as it's uncovered. The mask follows the scroll until
+ * the lockup plays (logo strokes draw in, the letters slide in), then lifts
+ * the rest of the way by itself, with the email rising in as it passes.
+ */
+const EMAIL = "hello@energyclub.com";
+---
+
+<!-- Not overflow-hidden: the curtain lets the panel reach above the footer
+     (see the script), clipping it to the mask instead -->
+<footer data-footer class="relative h-lvh text-olive">
+    <div data-footer-panel class="relative h-full bg-green">
+        <!-- Rises out of its own mask. The underline draws in on hover. -->
+        <a
+            href={`mailto:${EMAIL}`}
+            class="absolute top-[28.3%] left-1/2 -translate-x-1/2 overflow-hidden text-[clamp(1.125rem,2.78vw,4rem)] leading-[0.82] font-black uppercase"
+        >
+            <span
+                data-footer-email
+                class="block bg-[linear-gradient(currentColor,currentColor)] bg-size-[0%_0.08em] bg-left-bottom bg-no-repeat pb-[0.12em] transition-[background-size] duration-500 ease-power3-out hover:bg-size-[100%_0.08em] focus-visible:bg-size-[100%_0.08em]"
+            >
+                {EMAIL}
+            </span>
+        </a>
+
+        <div class="absolute inset-x-[1.68vw] bottom-[1.85vw] flex items-center gap-[3.4vw]">
+            <Logo class="w-[25.4vw] shrink-0" />
+            <!-- Takes the rest of the width, and the script sizes the type so ENERGY
+           fills it exactly (see fitLockup). Lines sit 0.82em apart, as in
+           Figma (the split's own spacing is looser). -->
+            <div class="@container min-w-0 flex-1">
+                <p
+                    data-lockup-text
+                    aria-label="Energy Club"
+                    class="text-lockup font-black whitespace-nowrap uppercase"
+                >
+                    <span
+                        aria-hidden="true"
+                        data-split
+                        data-from="bottom"
+                        data-reverse
+                        data-delay="0.1"
+                        class="w-fit tracking-[-0.02em]"
+                    >
+                        Energy
+                    </span>
+                    <span
+                        aria-hidden="true"
+                        data-split
+                        data-delay="0.1"
+                        class="w-fit tracking-[-0.01em]"
+                        style="margin-top: 0.04em"
+                    >
+                        Club
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <div
+            data-footer-shade
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-0 bg-black opacity-0"
+        ></div>
+    </div>
+</footer>
+
+<script>
+    import { gsap } from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+    import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+    import { createSplit, prefersReducedMotion } from "../scripts/split";
+    import { lenis } from "../scripts/smooth-scroll";
+
+    gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin);
+
+    const footer = document.querySelector<HTMLElement>("[data-footer]")!;
+    const lockupText = footer.querySelector<HTMLElement>("[data-lockup-text]")!;
+    const lockupLines = Array.from(lockupText.querySelectorAll<HTMLElement>("[data-split]"));
+
+    /**
+     * Sizes ENERGY / CLUB so its widest line exactly fills the space beside the
+     * logo. Measured rather than set, because splitting into letters drops the
+     * font's kerning, which widens the words by an amount CSS can't know. Each
+     * line is only as wide as its letters (w-fit), so its width is the word's.
+     */
+    const fitLockup = () => {
+        lockupText.style.fontSize = "";
+        const size = parseFloat(getComputedStyle(lockupText).fontSize);
+        const widest = Math.max(...lockupLines.map((line) => line.offsetWidth));
+        lockupText.style.fontSize = `${(size * lockupText.parentElement!.clientWidth) / widest}px`;
+    };
+    const email = footer.querySelector<HTMLElement>("[data-footer-email]")!;
+    const logo = footer.querySelector("svg")!;
+    const ring = logo.querySelector("[data-logo-ring]")!;
+    const strokes = Array.from(logo.querySelectorAll("path")).filter((p) => p !== ring);
+
+    const panel = footer.querySelector<HTMLElement>("[data-footer-panel]")!;
+    const shade = footer.querySelector<HTMLElement>("[data-footer-shade]")!;
+    const nightFrame = document.querySelector<HTMLElement>("[data-night-frame]")!;
+    const navBar = document.querySelector<HTMLElement>("[data-nav-bar]")!;
+    const contact = document.querySelector<HTMLButtonElement>("[data-nav-contact]")!;
+
+    // Where the footer's top is when the lockup plays and the mask takes over:
+    // the curtain about a quarter of the way up (the mask uncovers the rest of
+    // the lockup as it plays)
+    const TAKEOVER = "top 100%";
+    // The mask's height when it clears the email (28.3% down the screen)
+    const EMAIL_CLEARED = 0.9;
+
+    const reduced = prefersReducedMotion();
+
+    // `revealed`: scrolled to the footer, with the mask all the way up.
+    // `contactOpen`: the navbar's Contact has brought the footer up over the
+    // page. Either way the navbar turns olive over the green and Contact
+    // becomes Close.
+    let revealed = false;
+    let contactOpen = false;
+    const syncNav = () => {
+        const showing = revealed || contactOpen;
+        navBar.classList.toggle("text-olive", showing);
+        navBar.parentElement!.toggleAttribute("data-footer", showing);
+        contact.toggleAttribute("data-closes", showing);
+        contact.setAttribute("aria-label", showing ? "Close" : "Contact");
+    };
+
+    /**
+     * The curtain. As the footer scrolls in, the panel is pushed back up by
+     * exactly as much, so it holds still on screen. The night video's frame,
+     * which scrolls off above it by the same amount, is pushed back down to
+     * match, so the video holds still too. Neither of those moves; what does
+     * is the mask edge between them: the video is clipped to above it, and the
+     * panel (a full screen, so it can reach above the footer's own top once
+     * the mask outruns the scroll) to below it.
+     *
+     * The mask is the larger of two amounts, 0 → 1: `scroll`, how far the
+     * footer has scrolled in, and `auto`, which takes over at TAKEOVER and lifts
+     * it the rest of the way on its own. Scrolling back past TAKEOVER drops
+     * `auto` away again, so the mask settles back onto the scroll.
+     *
+     * While Contact has the panel (`overlay`), the mask leaves it alone.
+     */
+    const mask = { scroll: 0, auto: 0 };
+    const lifted = () => Math.max(mask.scroll, mask.auto);
+    let overlay = false;
+    const renderMask = () => {
+        nightFrame.style.clipPath = `inset(0% 0% ${lifted() * 100}% 0%)`;
+        revealed = lifted() > 0.96;
+        syncNav();
+        if (overlay) return;
+        panel.style.clipPath = `inset(${(1 - lifted()) * 100}% 0% 0% 0%)`;
+        shade.style.opacity = String(0.75 * (1 - lifted()) ** 2);
+    };
+
+    let curtain: ScrollTrigger | undefined;
+    if (reduced) {
+        ScrollTrigger.create({
+            trigger: footer,
+            start: "top 40px",
+            onToggle: ({ isActive }) => {
+                revealed = isActive;
+                syncNav();
+            },
+        });
+    } else {
+        curtain = gsap
+            .timeline({
+                scrollTrigger: {
+                    trigger: footer,
+                    start: "top bottom",
+                    end: "bottom bottom",
+                    scrub: true,
+                    onUpdate: ({ progress }) => {
+                        mask.scroll = progress;
+                        renderMask();
+                    },
+                },
+            })
+            .fromTo(panel, { yPercent: -100 }, { yPercent: 0, ease: "none" }, 0)
+            .fromTo(nightFrame, { yPercent: 0 }, { yPercent: 100, ease: "none" }, 0).scrollTrigger;
+
+        // The panel now sits above the footer, over the night video, so it's
+        // clipped away from the start rather than on the first scroll
+        renderMask();
+    }
+
+    /**
+     * Contact, from anywhere above the footer: the panel is fixed over the
+     * screen and its mask lifts from wherever the curtain has it (off the
+     * bottom, unless the footer is already partly in) while the lockup plays,
+     * and the page holds still underneath. Close wipes it back down to that
+     * same edge and hands the panel back to the curtain.
+     *
+     * Once scrolled to the footer, Close instead scrolls back up a screen, and
+     * the curtain comes down with the scroll.
+     */
+    let onOpen = () => {};
+    let onClosed = () => {};
+    const edge = () => (reduced ? 100 : (1 - lifted()) * 100);
+
+    const lockScroll = (on: boolean) => {
+        if (lenis) on ? lenis.stop() : lenis.start();
+        else document.documentElement.style.overflow = on ? "hidden" : "";
+    };
+
+    // The panel's clip tweens only overwrite each other ("auto"): overwrite:
+    // true would also kill the curtain's scrubbed yPercent tween on the
+    // panel, stranding it a screen above the footer
+    const openContact = () => {
+        contactOpen = overlay = true;
+        syncNav();
+        lockScroll(true);
+        Object.assign(panel.style, { position: "fixed", inset: "0", zIndex: "999" });
+        gsap.set(panel, { yPercent: 0, clipPath: `inset(${edge()}% 0% 0% 0%)` });
+        gsap.to(panel, {
+            clipPath: "inset(0% 0% 0% 0%)",
+            duration: reduced ? 0 : 1.2,
+            ease: "expo.inOut",
+            overwrite: "auto",
+        });
+        gsap.to(shade, { opacity: 0, duration: reduced ? 0 : 0.6, overwrite: true });
+        onOpen();
+    };
+
+    const closeContact = () => {
+        contactOpen = false;
+        syncNav();
+        gsap.to(panel, {
+            clipPath: `inset(${edge()}% 0% 0% 0%)`,
+            duration: reduced ? 0 : 1,
+            ease: "expo.inOut",
+            overwrite: "auto",
+            onComplete: () => {
+                overlay = false;
+                Object.assign(panel.style, { position: "", inset: "", zIndex: "" });
+                if (curtain) {
+                    gsap.set(panel, { yPercent: -100 * (1 - curtain.progress) });
+                    renderMask();
+                } else {
+                    panel.style.clipPath = "";
+                }
+                lockScroll(false);
+                onClosed();
+            },
+        });
+    };
+
+    // Back up to the night video, a screen above the footer. The mask drops
+    // back onto the scroll first, so the curtain comes down as it goes rather
+    // than holding until the takeover point at the very top of the scroll.
+    const scrollAbove = () => {
+        gsap.killTweensOf(mask);
+        mask.auto = 0;
+        const top = footer.getBoundingClientRect().top + window.scrollY - window.innerHeight;
+        if (lenis) lenis.scrollTo(top, { duration: 1.6 });
+        else window.scrollTo(0, top);
+    };
+
+    contact.addEventListener("click", () => {
+        if (contactOpen) closeContact();
+        else if (overlay)
+            return; // still wiping down
+        else if (revealed) scrollAbove();
+        else openContact();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && contactOpen) closeContact();
+    });
+    // A resize re-renders the curtain, which would push the fixed panel off
+    ScrollTrigger.addEventListener("refresh", () => overlay && gsap.set(panel, { yPercent: 0 }));
+
+    document.fonts.ready.then(() => {
+        const titles = lockupLines.map(createSplit);
+        fitLockup();
+        window.addEventListener("resize", fitLockup);
+
+        if (reduced) {
+            titles.forEach((tl) => tl.progress(1));
+            return;
+        }
+
+        // Ring draws first; the inner arcs follow once it is under way, and the
+        // letters slide in alongside
+        const lockup = gsap
+            .timeline({ paused: true })
+            .fromTo(
+                ring,
+                { drawSVG: "0%" },
+                { drawSVG: "100%", duration: 1.2, ease: "power2.out" },
+                0,
+            )
+            .fromTo(
+                strokes,
+                { drawSVG: "0%" },
+                { drawSVG: "100%", duration: 1, ease: "power2.out" },
+                0.3,
+            );
+        titles.forEach((tl) => lockup.add(tl.paused(false), 0));
+
+        const rise = gsap
+            .timeline({ paused: true })
+            .fromTo(email, { yPercent: 110 }, { yPercent: 0, duration: 1, ease: "expo.out" });
+
+        // The email rises as the mask clears it, and hides if it comes back over
+        let emailShown = false;
+        const renderAuto = () => {
+            renderMask();
+            if (overlay) return;
+            const cleared = lifted() >= EMAIL_CLEARED;
+            if (cleared !== emailShown) {
+                emailShown = cleared;
+                cleared ? rise.restart() : rise.pause(0);
+            }
+        };
+
+        // At TAKEOVER the lockup plays and the mask lifts the rest of the way,
+        // starting from wherever the scroll has it
+        const takeover = ScrollTrigger.create({
+            trigger: footer,
+            start: TAKEOVER,
+            onEnter: () => {
+                lockup.restart();
+                mask.auto = mask.scroll;
+                gsap.to(mask, {
+                    auto: 1,
+                    duration: 1.2,
+                    ease: "power3.out",
+                    overwrite: true,
+                    onUpdate: renderAuto,
+                });
+            },
+            onLeaveBack: () => {
+                lockup.pause(0);
+                gsap.to(mask, {
+                    auto: 0,
+                    duration: 0.8,
+                    ease: "power1.inOut",
+                    overwrite: true,
+                    onUpdate: renderAuto,
+                });
+            },
+        });
+
+        // The scroll can clear the email too, before the takeover has
+        ScrollTrigger.create({
+            trigger: footer,
+            start: "top bottom",
+            end: "bottom bottom",
+            onUpdate: renderAuto,
+        });
+
+        // Contact plays the lockup and email as the panel lifts; once it's
+        // closed, they go back to where the scroll has them
+        onOpen = () => {
+            lockup.restart();
+            rise.restart();
+            emailShown = true;
+        };
+        onClosed = () => {
+            if (takeover.scroll() >= takeover.start) lockup.progress(1);
+            else lockup.pause(0);
+            renderAuto();
+        };
+    });
+</script>

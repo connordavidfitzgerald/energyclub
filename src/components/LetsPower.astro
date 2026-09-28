@@ -1,0 +1,143 @@
+---
+import MuxClip from "./MuxClip.astro";
+
+const uses = [
+    "Festivals",
+    "Construction sites",
+    "Disaster relief",
+    "Data centers",
+    "Utilities",
+    "Film sets",
+    "Live events",
+    "EV charging",
+    "& more",
+];
+
+const ALTERNATE = false;
+
+const halves = [
+    { lines: uses.slice(0, 4), start: 0 },
+    { lines: uses.slice(4), start: 4 },
+];
+---
+
+<section id="about" data-power data-parallax-root class="relative -mt-[100lvh] h-[750lvh]">
+    <div data-power-frame class="sticky top-0 h-lvh overflow-hidden">
+        {halves.map(({ lines, start }, h) => (
+            <div
+                class:list={[
+                    "absolute inset-x-4 text-center font-black uppercase",
+                    h === 0
+                        ? "bottom-[calc(50%+var(--power-offset))]"
+                        : "top-[calc(50%+var(--power-offset))]",
+                ]}
+            >
+                {h === 0 && (
+                    <p class="mb-[clamp(1.25rem,2.26vw,3rem)] text-label leading-[0.9]">
+                        Let's power
+                    </p>
+                )}
+                <ul class="text-list leading-[0.9]">
+                    {lines.map((use, j) => {
+                        const i = start + j;
+                        return (
+                            <li class="overflow-hidden">
+                                <!-- Hidden until split, so the whole word never flashes in -->
+                                <span
+                                    data-power-line
+                                    data-from={ALTERNATE && i % 2 ? undefined : "bottom"}
+                                    data-reverse={ALTERNATE && i % 2 ? "" : undefined}
+                                    data-duration="0.6"
+                                    class="invisible block"
+                                >
+                                    {use}
+                                </span>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+        ))}
+
+        <!-- Clipped to the video window by script; starts as the small window -->
+        <div
+            data-window
+            class="absolute inset-0"
+            style="clip-path: inset(calc(50% - var(--power-window) * 9 / 32) calc(50% - var(--power-window) / 2))"
+        >
+            <div data-window-media class="absolute inset-0">
+                <MuxClip data-power-video data-parallax="20" clip="sun" class="size-full" />
+            </div>
+            <!-- One line along the bottom edge, 33px in from each side at 1728
+                 (Figma), sized to that width (--text-sun) -->
+            <p class="@container absolute inset-x-[1.9vw] bottom-[0.64vw] text-center font-black uppercase">
+                <span class="block text-sun leading-[0.9] tracking-[-0.02em] whitespace-nowrap">
+                    With the sun.
+                </span>
+            </p>
+        </div>
+    </div>
+</section>
+
+<script>
+    import { gsap } from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+    import { createSplit, prefersReducedMotion } from "../scripts/split";
+    import { POWER_WINDOW, videoWindow } from "../scripts/video-window";
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    const section = document.querySelector<HTMLElement>("[data-power]")!;
+    const lines = section.querySelectorAll<HTMLElement>("[data-power-line]");
+    const video = section.querySelector<HTMLVideoElement>("[data-power-video]")!;
+    const win = videoWindow(
+        section.querySelector("[data-window]")!,
+        section.querySelector("[data-window-media]")!,
+        POWER_WINDOW.width,
+        POWER_WINDOW.min,
+    );
+    win.render();
+
+    // Only plays while the section is on screen. It's there from the start,
+    // under the hero, so it starts a little into the hero's shrink: early
+    // enough to be playing by the cut.
+    ScrollTrigger.create({
+        trigger: section,
+        start: "top 0%",
+        end: "bottom top",
+        onToggle: ({ isActive }) => (isActive ? video.play().catch(() => {}) : video.pause()),
+    });
+
+    document.fonts.ready.then(() => {
+        const titles = Array.from(lines, createSplit);
+        gsap.set(lines, { visibility: "visible" });
+
+        if (prefersReducedMotion()) {
+            titles.forEach((tl) => tl.progress(1));
+            win.state.grow = 1;
+            win.render();
+            return;
+        }
+
+        // Durations are shares of the scroll, not seconds
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: section,
+                start: "top -50%", // halfway through the hero's shrink
+                // A screen before the frame lets go: that last screen is
+                // Community's transition over it
+                end: "bottom 220%",
+                scrub: true,
+            },
+            onUpdate: win.render,
+        });
+
+        // Each line's letter reveal, scrubbed by the scroll; lines start 0.4 apart
+        titles.forEach((title, i) => tl.add(title.paused(false), i * 0.4));
+
+        tl.to(win.state, { grow: 1, duration: 4, ease: "expo.in" }, "+=0.4").to(
+            {},
+            { duration: 2.25 },
+        ); // holds full screen before Community's transition (about 1.1 screens of scroll)
+    });
+</script>
