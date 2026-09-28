@@ -71,7 +71,12 @@
 }
 
 @layer base {
+    /* Nothing scrolls sideways: without this, anything poking past the right
+       edge (the parallax layers are scaled up) brings up a horizontal
+       scrollbar wherever scrollbars always show. Clip, not hidden, so the
+       page doesn't become a scroll container and sticky keeps working. */
     html {
+        overflow-x: clip;
         font-weight: 500;
         line-height: 1;
     }

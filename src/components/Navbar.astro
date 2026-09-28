@@ -33,7 +33,14 @@ const underline =
 
 <!-- data-footer: the footer is showing (the footer's script sets it), and the
      About panel turns olive with green text over it -->
-<header data-nav class="group/nav fixed inset-x-0 top-0 z-1000 text-white">
+<!-- Starts hidden under the intro, like the sand: the intro's video wipe
+     uncovers it (Flywheel.astro runs it, and clears this) -->
+<header
+    data-nav
+    inert
+    class="group/nav fixed inset-x-0 top-0 z-1000 text-white"
+    style="clip-path: inset(100lvh 0 0 0)"
+>
     <!-- 12 columns from lg, as in Figma: 3 + 3, two empty, then 4 -->
     <div
         id="about-panel"

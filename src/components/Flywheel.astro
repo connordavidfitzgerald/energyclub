@@ -127,6 +127,7 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
     import { SplitText } from "gsap/SplitText";
     import { createSplit, prefersReducedMotion } from "../scripts/split";
     import { POWER_WINDOW, videoWindow } from "../scripts/video-window";
+    import { lenis } from "../scripts/smooth-scroll";
 
     gsap.registerPlugin(ScrollTrigger);
 
@@ -152,6 +153,23 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
     const video = section.querySelector<HTMLVideoElement>("[data-flywheel-video]")!;
     const headline = section.querySelector<HTMLElement>("[data-headline]")!;
     const copy = section.querySelectorAll<HTMLElement>("[data-flywheel-copy]");
+    const nav = document.querySelector<HTMLElement>("[data-nav]")!;
+
+    // The navbar sits under the intro until the video wipe uncovers it, and
+    // the page holds still until the intro has finished
+    const showNav = () => {
+        nav.style.clipPath = "";
+        nav.inert = false;
+    };
+    // A refresh starts back at the top, so the intro is always seen rather
+    // than playing (and holding the scroll) somewhere off screen. ScrollTrigger
+    // keeps its own note of the scroll and puts it back on load, so that goes
+    // too (this also sets history.scrollRestoration to manual).
+    if (!prefersReducedMotion()) {
+        ScrollTrigger.clearScrollMemory("manual");
+        window.scrollTo(0, 0);
+    }
+    lenis?.stop();
 
     /**
      * The scroll-out into Let's power, which sits underneath this section
@@ -218,6 +236,7 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
             // Shown full screen, but left on its poster frame rather than autoplaying
             gsap.set(reveal, { clipPath: "inset(0% 0% 0% 0%)" });
             gsap.set(headline, { visibility: "visible" });
+            showNav();
             return;
         }
 
@@ -225,7 +244,7 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
         // undone so the text can rewrap on resize.
         const split = SplitText.create(headline, { type: "lines", mask: "lines" });
 
-        gsap.timeline()
+        gsap.timeline({ onComplete: () => lenis?.start() })
             .fromTo(
                 svg,
                 { opacity: 0, scale: 1.2 },
@@ -250,6 +269,19 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
                 reveal,
                 { clipPath: "inset(100% 0% 0% 0%)" },
                 { clipPath: "inset(0% 0% 0% 0%)", duration: WIPE, ease: "expo.inOut" },
+                HIDE_AT,
+            )
+            // The navbar is uncovered as the wipe's edge passes over it, so
+            // it's the same edge, in px down the screen
+            .fromTo(
+                nav,
+                { clipPath: `inset(${section.offsetHeight}px 0px 0px 0px)` },
+                {
+                    clipPath: "inset(0px 0px 0px 0px)",
+                    duration: WIPE,
+                    ease: "expo.inOut",
+                    onComplete: showNav,
+                },
                 HIDE_AT,
             )
             .fromTo(
