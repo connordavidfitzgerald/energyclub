@@ -10,6 +10,10 @@ import logoSvg from "../assets/EnergyClub_Web.svg?raw";
  * The logo is inlined, drawn in currentColor, so it turns dark with the links
  * while the panel is open.
  */
+
+// The client has taken About off the site for now. Set to true to bring the
+// link and its panel back; everything below is kept as it was.
+const SHOW_ABOUT = false;
 const logo = logoSvg
     .replaceAll('"white"', '"currentColor"')
     .replace("<svg", '<svg aria-hidden="true" class="h-[clamp(1rem,0.8rem+0.5vw,1.5rem)] w-auto"');
@@ -42,45 +46,47 @@ const underline =
     style="clip-path: inset(100lvh 0 0 0)"
 >
     <!-- 12 columns from lg, as in Figma: 3 + 3, two empty, then 4 -->
-    <div
-        id="about-panel"
-        data-nav-panel
-        data-lenis-prevent
-        class="invisible absolute inset-x-0 top-0 max-h-svh overflow-y-auto bg-green text-black transition-colors duration-300 group-data-[footer]/nav:bg-olive group-data-[footer]/nav:text-green"
-        style="clip-path: inset(0 0 100% 0)"
-    >
-        <div class="grid gap-x-2.5 gap-y-5 px-4 pt-20 pb-10 text-small leading-[1.2] md:grid-cols-2 md:px-5 lg:grid-cols-12">
-            <p data-nav-reveal class="lg:col-span-3">
-                Want to swap fossil fuels for clean energy? Or do you just want more energy from the
-                grid, but can’t get it? Energy Club solves both issues by generating and delivering
-                large-scale renewable energy—no transmission lines required.
-            </p>
-            <div class="flex flex-col gap-5 lg:col-span-3">
-                <p data-nav-reveal>
-                    Not only does this enable us to deliver massive, resilient and instantaneous
-                    power in complex layouts over long periods of time, but also service new
-                    non-utility scale customers including:
+    {SHOW_ABOUT && (
+        <div
+            id="about-panel"
+            data-nav-panel
+            data-lenis-prevent
+            class="invisible absolute inset-x-0 top-0 max-h-svh overflow-y-auto bg-green text-black transition-colors duration-300 group-data-[footer]/nav:bg-olive group-data-[footer]/nav:text-green"
+            style="clip-path: inset(0 0 100% 0)"
+        >
+            <div class="grid gap-x-2.5 gap-y-5 px-4 pt-20 pb-10 text-small leading-[1.2] md:grid-cols-2 md:px-5 lg:grid-cols-12">
+                <p data-nav-reveal class="lg:col-span-3">
+                    Want to swap fossil fuels for clean energy? Or do you just want more energy from the
+                    grid, but can’t get it? Energy Club solves both issues by generating and delivering
+                    large-scale renewable energy—no transmission lines required.
                 </p>
-                <ul data-nav-reveal>
-                    {customers.map((customer) => <li>{customer}</li>)}
-                </ul>
-            </div>
-            <div class="flex flex-col gap-[1.2em] tracking-[-0.01em] md:col-span-2 lg:col-span-4 lg:col-start-9">
-                <p data-nav-reveal>
-                    The company started with a simple vision of eliminating fossil fuels from the live
-                    entertainment industry, and has since evolved into a systems-level solution that
-                    uses a unique combination of static and mobile clean energy generation and
-                    distribution in concert with intelligent, utility-scale technology.
-                </p>
-                <p data-nav-reveal>
-                    By aggregating these “loads,” we are able to provide cost-effective renewable
-                    energy - or in some cases, energy where there is no other alternative. With every
-                    project, we offer pro bono clean energy to community organizations and independent
-                    creatives via <a href="#solarpunks" class="underline">Solarpunks.</a>
-                </p>
+                <div class="flex flex-col gap-5 lg:col-span-3">
+                    <p data-nav-reveal>
+                        Not only does this enable us to deliver massive, resilient and instantaneous
+                        power in complex layouts over long periods of time, but also service new
+                        non-utility scale customers including:
+                    </p>
+                    <ul data-nav-reveal>
+                        {customers.map((customer) => <li>{customer}</li>)}
+                    </ul>
+                </div>
+                <div class="flex flex-col gap-[1.2em] tracking-[-0.01em] md:col-span-2 lg:col-span-4 lg:col-start-9">
+                    <p data-nav-reveal>
+                        The company started with a simple vision of eliminating fossil fuels from the live
+                        entertainment industry, and has since evolved into a systems-level solution that
+                        uses a unique combination of static and mobile clean energy generation and
+                        distribution in concert with intelligent, utility-scale technology.
+                    </p>
+                    <p data-nav-reveal>
+                        By aggregating these “loads,” we are able to provide cost-effective renewable
+                        energy - or in some cases, energy where there is no other alternative. With every
+                        project, we offer pro bono clean energy to community organizations and independent
+                        creatives via <a href="#solarpunks" class="underline">Solarpunks.</a>
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
+    )}
 
     <!-- Turns olive over the green footer (the footer's script sets it, on
          the bar itself so it wins over the colour the About panel tweens),
@@ -88,15 +94,17 @@ const underline =
     <nav data-nav-bar class="relative flex items-center justify-between px-4 pt-4 transition-colors duration-300 md:px-5 md:pt-5 [[data-footer][data-about-open]_&]:text-green">
         <a href="/" aria-label="Energy Club" set:html={logo} />
         <div class="flex justify-end gap-[clamp(1.25rem,3vw,2.5rem)] text-small tracking-tight">
-            <button
-                type="button"
-                data-nav-about
-                aria-expanded="false"
-                aria-controls="about-panel"
-                class="group cursor-pointer"
-            >
-                <span class:list={[underline, "transition-[background-size]"]}>About</span>
-            </button>
+            {SHOW_ABOUT && (
+                <button
+                    type="button"
+                    data-nav-about
+                    aria-expanded="false"
+                    aria-controls="about-panel"
+                    class="group cursor-pointer"
+                >
+                    <span class:list={[underline, "transition-[background-size]"]}>About</span>
+                </button>
+            )}
             <!-- Reveals the footer over the page (the footer's script runs it).
                  Rolls over to Close while the footer is showing. -->
             <button
@@ -128,77 +136,81 @@ const underline =
 
 
     const header = document.querySelector<HTMLElement>("[data-nav]")!;
-    const panel = header.querySelector<HTMLElement>("[data-nav-panel]")!;
-    const about = header.querySelector<HTMLButtonElement>("[data-nav-about]")!;
-    const reveals = panel.querySelectorAll("[data-nav-reveal]");
-    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const panel = header.querySelector<HTMLElement>("[data-nav-panel]");
+    const about = header.querySelector<HTMLButtonElement>("[data-nav-about]");
 
-    // The panel wipes down while the navbar darkens, and the copy rises in
-    // column by column just behind the wipe. Closing plays it back, quicker.
-    const tl = gsap
-        .timeline({ paused: true })
-        .set(panel, { visibility: "visible" }, 0)
-        .fromTo(
-            panel,
-            { clipPath: "inset(0% 0% 100% 0%)" },
-            { clipPath: "inset(0% 0% 0% 0%)", duration: 0.7, ease: "expo.out" },
-            0,
-        )
-        .to(header, { color: "#161a1e", duration: 0.3, ease: "power2.out" }, 0.05)
-        .fromTo(
-            reveals,
-            { y: 16, autoAlpha: 0 },
-            { y: 0, autoAlpha: 1, duration: 0.6, stagger: 0.06, ease: "power3.out" },
-            0.15,
-        );
+    // Not on the page while About is switched off (SHOW_ABOUT above)
+    if (panel && about) {
+        const reveals = panel.querySelectorAll("[data-nav-reveal]");
+        const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
 
-    let open = false;
-    const setOpen = (next: boolean) => {
-        if (next === open) return;
-        open = next;
-        header.toggleAttribute("data-about-open", open);
-        about.setAttribute("aria-expanded", String(open));
-        if (prefersReducedMotion()) tl.progress(open ? 1 : 0).pause();
-        else if (open) tl.timeScale(1).play();
-        else tl.timeScale(1.6).reverse();
-    };
+        // The panel wipes down while the navbar darkens, and the copy rises in
+        // column by column just behind the wipe. Closing plays it back, quicker.
+        const tl = gsap
+            .timeline({ paused: true })
+            .set(panel, { visibility: "visible" }, 0)
+            .fromTo(
+                panel,
+                { clipPath: "inset(0% 0% 100% 0%)" },
+                { clipPath: "inset(0% 0% 0% 0%)", duration: 0.7, ease: "expo.out" },
+                0,
+            )
+            .to(header, { color: "#161a1e", duration: 0.3, ease: "power2.out" }, 0.05)
+            .fromTo(
+                reveals,
+                { y: 16, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: 0.6, stagger: 0.06, ease: "power3.out" },
+                0.15,
+            );
 
-    about.addEventListener("pointerenter", () => canHover.matches && setOpen(true));
-    // The panel sits inside the header, so this fires only once the pointer
-    // is off both the navbar and the panel
-    header.addEventListener("pointerleave", () => canHover.matches && setOpen(false));
+        let open = false;
+        const setOpen = (next: boolean) => {
+            if (next === open) return;
+            open = next;
+            header.toggleAttribute("data-about-open", open);
+            about.setAttribute("aria-expanded", String(open));
+            if (prefersReducedMotion()) tl.progress(open ? 1 : 0).pause();
+            else if (open) tl.timeScale(1).play();
+            else tl.timeScale(1.6).reverse();
+        };
 
-    // Heading for Contact closes it: the pointer only has to come within a
-    // little of the button, not onto it
-    const contact = header.querySelector<HTMLButtonElement>("[data-nav-contact]")!;
-    const NEAR = 16;
-    header.addEventListener("pointermove", (e) => {
-        if (!open || !canHover.matches) return;
-        const r = contact.getBoundingClientRect();
-        const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right);
-        const dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom);
-        if (Math.hypot(dx, dy) <= NEAR) setOpen(false);
-    });
+        about.addEventListener("pointerenter", () => canHover.matches && setOpen(true));
+        // The panel sits inside the header, so this fires only once the pointer
+        // is off both the navbar and the panel
+        header.addEventListener("pointerleave", () => canHover.matches && setOpen(false));
 
-    // A mouse click keeps it open (hovering already opened it); a tap or a
-    // keypress toggles it
-    about.addEventListener("click", (e) => {
-        setOpen(canHover.matches && e.detail > 0 ? true : !open);
-    });
+        // Heading for Contact closes it: the pointer only has to come within a
+        // little of the button, not onto it
+        const contact = header.querySelector<HTMLButtonElement>("[data-nav-contact]")!;
+        const NEAR = 16;
+        header.addEventListener("pointermove", (e) => {
+            if (!open || !canHover.matches) return;
+            const r = contact.getBoundingClientRect();
+            const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right);
+            const dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom);
+            if (Math.hypot(dx, dy) <= NEAR) setOpen(false);
+        });
 
-    document.addEventListener("click", (e) => {
-        if (open && !header.contains(e.target as Node)) setOpen(false);
-    });
-    panel.addEventListener("click", (e) => {
-        if ((e.target as Element).closest("a")) setOpen(false);
-    });
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && open) {
-            setOpen(false);
-            about.focus();
-        }
-    });
-    header.addEventListener("focusout", (e) => {
-        if (!header.contains(e.relatedTarget as Node)) setOpen(false);
-    });
+        // A mouse click keeps it open (hovering already opened it); a tap or a
+        // keypress toggles it
+        about.addEventListener("click", (e) => {
+            setOpen(canHover.matches && e.detail > 0 ? true : !open);
+        });
+
+        document.addEventListener("click", (e) => {
+            if (open && !header.contains(e.target as Node)) setOpen(false);
+        });
+        panel.addEventListener("click", (e) => {
+            if ((e.target as Element).closest("a")) setOpen(false);
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && open) {
+                setOpen(false);
+                about.focus();
+            }
+        });
+        header.addEventListener("focusout", (e) => {
+            if (!header.contains(e.relatedTarget as Node)) setOpen(false);
+        });
+    }
 </script>
