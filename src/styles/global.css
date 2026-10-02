@@ -48,9 +48,10 @@
         1.5rem,
         min((100vw - 2rem) / 11.8, (50svh - var(--power-offset) - 7svh) / 4.5)
     );
-    /* Fitted to its container's width; WITH THE SUN. is about 7.7em wide in
-       Black at -2% tracking (see LetsPower) */
-    --text-sun: calc(100cqi / 7.8);
+    /* Centred over the full-screen video in Let's power, kept small so the
+       solar panels stay clear. WITH THE SUN. is about 7.7em wide, so this is
+       roughly half the screen at desktop. */
+    --text-sun: clamp(2.5rem, 6.5vw, 8rem); /* 40 → 128 */
     /* The footer ENERGY / CLUB, filling the space beside the logo. ENERGY is
        about 4.2em wide; the footer script then fits it exactly. */
     --text-lockup: calc(100cqi / 4.3);

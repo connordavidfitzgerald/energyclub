@@ -5,11 +5,11 @@ const uses = [
     "Festivals",
     "Construction sites",
     "Disaster relief",
-    "Data centers",
     "Utilities",
     "Film sets",
     "Live events",
     "EV charging",
+    "Data centers",
     "& more",
 ];
 
@@ -68,11 +68,19 @@ const halves = [
             <div data-window-media class="absolute inset-0">
                 <MuxClip data-power-video data-parallax="20" clip="sun" class="size-full" />
             </div>
-            <!-- One line along the bottom edge, 33px in from each side at 1728
-                 (Figma), sized to that width (--text-sun) -->
-            <p class="@container absolute inset-x-[1.9vw] bottom-[0.64vw] text-center font-black uppercase">
-                <span class="block text-sun leading-[0.9] tracking-[-0.02em] whitespace-nowrap">
-                    With the sun.
+            <!-- Centred, and small enough to clear the panels along the bottom of
+                 the shot. Hidden until the window is full screen, then its
+                 letters rise in (see the script). -->
+            <p class="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center font-black uppercase">
+                <span class="block overflow-hidden">
+                    <span
+                        data-sun-line
+                        data-from="bottom"
+                        data-duration="0.6"
+                        class="invisible block text-sun leading-[0.9] tracking-[-0.02em] whitespace-nowrap"
+                    >
+                        With the sun.
+                    </span>
                 </span>
             </p>
         </div>
@@ -89,6 +97,7 @@ const halves = [
 
     const section = document.querySelector<HTMLElement>("[data-power]")!;
     const lines = section.querySelectorAll<HTMLElement>("[data-power-line]");
+    const sunLine = section.querySelector<HTMLElement>("[data-sun-line]")!;
     const video = section.querySelector<HTMLVideoElement>("[data-power-video]")!;
     const win = videoWindow(
         section.querySelector("[data-window]")!,
@@ -110,10 +119,12 @@ const halves = [
 
     document.fonts.ready.then(() => {
         const titles = Array.from(lines, createSplit);
-        gsap.set(lines, { visibility: "visible" });
+        const sun = createSplit(sunLine);
+        gsap.set([...lines, sunLine], { visibility: "visible" });
 
         if (prefersReducedMotion()) {
             titles.forEach((tl) => tl.progress(1));
+            sun.progress(1);
             win.state.grow = 1;
             win.render();
             return;
@@ -135,9 +146,12 @@ const halves = [
         // Each line's letter reveal, scrubbed by the scroll; lines start 0.4 apart
         titles.forEach((title, i) => tl.add(title.paused(false), i * 0.4));
 
-        tl.to(win.state, { grow: 1, duration: 4, ease: "expo.in" }, "+=0.4").to(
-            {},
-            { duration: 2.25 },
-        ); // holds full screen before Community's transition (about 1.1 screens of scroll)
+        tl.to(win.state, { grow: 1, duration: 4, ease: "expo.in" }, "+=0.4")
+            // "With the sun." rises in once the window is full screen, during
+            // the hold, so it never shows through the growing window
+            .add(sun.paused(false))
+            // Holds full screen before Community's transition (about 1.1
+            // screens of scroll), timed from the end of the grow
+            .to({}, { duration: 2.25 }, "<");
     });
 </script>

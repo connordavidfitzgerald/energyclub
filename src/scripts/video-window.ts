@@ -12,7 +12,7 @@ export const POWER_WINDOW = { width: 180 / 1728, min: 128 };
  * The window is the layer's clip-path. The media inside scales so it always
  * just covers the window, so a small window shows the whole shot rather than
  * a crop. Anything else in the layer isn't scaled, so the window reveals it
- * in place (the "with the sun" mask).
+ * in place.
  *
  * `startWidth` is the starting window as a share of the screen width; on
  * narrow screens it never starts narrower than `minWidth` px (or the screen).
