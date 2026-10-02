@@ -134,12 +134,17 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
     const OUTLINE = 20; // the thin outline: 10 units visible, as in the Figma file
     const FILL = 400; // past twice the thickest arm (~173), so the shape is solid
 
-    const OUTLINE_IN = 1;
+    // The intro keeps a one-second beat: the outline at 0, the flood and
+    // wordmark at 1, the video wipe at 2, and the page scrolls from 3
+    const BEAT = 1;
+    const OUTLINE_IN = BEAT;
     const FLOOD = 0.5;
-    const TITLE_AT = 1;
+    const TITLE_AT = BEAT;
 
-    // Stage 2: the beat the wordmark holds for before it hides
-    const HOLD = 0.8;
+    // Stage 2 starts on the next beat after the wordmark's
+    const HIDE_AT = TITLE_AT + BEAT;
+    // and the wipe takes one beat
+    const WIPE = BEAT;
     // How far each headline line trails the one below it
     const LINE_STAGGER = 0.1;
     // How far below its place the video section starts, as a % of its height
@@ -224,11 +229,6 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
         const playTitles = () => titles.forEach((tl) => tl.play());
         const hideTitles = () => titles.forEach((tl) => tl.reverse());
 
-        // The longest line's reveal, which its reverse also takes
-        const titleLength = Math.max(...titles.map((tl) => tl.duration()));
-        const HIDE_AT = TITLE_AT + titleLength + HOLD;
-        const WIPE = titleLength + 0.3;
-
         // Straight to where the intro ends: all green, wordmark hidden
         if (prefersReducedMotion()) {
             gsap.set(stroke, { attr: { "stroke-width": FILL } });
@@ -297,9 +297,9 @@ import { clipPlaybackId, clipPoster } from "../lib/mux";
                 { yPercent: 110 },
                 {
                     yPercent: 0,
-                    delay: 0.55,
-                    duration: 0.75,
-                    stagger: -0.105,
+                    delay: 0.4,
+                    duration: 0.55,
+                    stagger: -0.08,
                     ease: "expo.out",
                     onComplete: () => split.revert(),
                 },

@@ -4,8 +4,8 @@
  */
 export const CLIPS = {
     intro: "K02hLypI6adHKU9EVV8St6xZL1wue5jETDLWZ34hO01cc",
-    sun: "jWDteflW2KJxFTDZ3HWzX8WQdOlD9WAjCt2n9QBS8zM",
-    night: "HpcO029B4uDgikSfwmNDdN8iPqjbKTKSTCQd27pDw9Q00",
+    sun: "W301Q1HnbEJZ4BgYiswfZOqkYPyA1KW9wCAoFX4sl3is",
+    night: "P73O01dbyul5BuyxezearLow87Qy6k01NDy8eGKUKE02DQ",
 } as const;
 
 export type Clip = keyof typeof CLIPS;
