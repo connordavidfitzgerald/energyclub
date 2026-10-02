@@ -234,7 +234,7 @@ const COLUMNS = 6;
 
     ScrollTrigger.create({
         trigger: section,
-        start: "top bottom",
+        start: "top 90%",
         end: "bottom top",
         onToggle: ({ isActive }) => (isActive ? video.play().catch(() => {}) : video.pause()),
     });
