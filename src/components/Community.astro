@@ -58,7 +58,7 @@ const COLUMNS = 6;
 
         <div
             data-carousel
-            class="relative flex snap-x snap-mandatory gap-3 overflow-x-auto px-[calc((100%-var(--slide))/2)] [--slide:80vw] [scrollbar-width:none] md:[--slide:40vw]"
+            class="relative flex snap-x snap-mandatory pt-20 gap-3 overflow-x-auto px-[calc((100%-var(--slide))/2)] [--slide:70vw] [scrollbar-width:none] md:[--slide:40vw]"
         >
             <!-- The film's slide has no parallax, so it's framed exactly as the
                  full-screen copy is at the cut -->
@@ -248,7 +248,7 @@ const COLUMNS = 6;
     const night = { grow: 0 };
     const handoff = { progress: 0 };
     // The slow push, 0 → 1 each: the film's in, and night's settle back out
-    const PUSH = 0.12;
+    const PUSH = 0.2;
     const push = { film: 0, night: 0 };
 
     const renderFilm = () => {

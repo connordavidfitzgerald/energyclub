@@ -41,12 +41,12 @@
     --text-lede: clamp(1.5rem, 0.9rem + 3vw, 3rem); /* 24 → 48 */
     /* Sits in the flywheel's hub, which scales with the longer screen side */
     --text-wordmark: clamp(1.5rem, 2.5vmax, 3.5rem); /* 24 → 72 */
-    /* As large as fits: CONSTRUCTION SITES (~11.6em) across the gutters, and
-       the five lines under the window (4.5em) in the bottom half, with a
-       little room to spare below */
+    /* As large as fits: LIVE EVENTS & EXPERIENTIAL (~15.5em) across the
+       gutters, and the five lines under the window (4.5em) in the bottom
+       half, with a little room to spare below */
     --text-list: max(
-        1.5rem,
-        min((100vw - 2rem) / 11.8, (50svh - var(--power-offset) - 7svh) / 4.5)
+        1rem,
+        min((100vw - 2rem) / 15.8, (50svh - var(--power-offset) - 7svh) / 4.5)
     );
     /* Centred over the full-screen video in Let's power: one step below the
        list on a 1.25 (major third) scale, small enough to clear the solar
