@@ -2,7 +2,6 @@
 import { Image } from "astro:assets";
 import MuxClip from "./MuxClip.astro";
 import bike from "../assets/carousel/bike.jpg";
-import station from "../assets/carousel/solar-station.jpg";
 import crowd from "../assets/carousel/crowd.jpg";
 import solarpunks from "../assets/solarpunks.png";
 
@@ -15,19 +14,26 @@ import solarpunks from "../assets/solarpunks.png";
  * one after another over WITH THE SUN, which drifts up behind them; once
  * they've closed, the photos wipe up in turn and the copy rises in.
  *
- * It holds for a screen, then hands over to the third video, which sits
- * underneath (pulled up a screen) with its window on the centre photo: the
- * carousel closes in onto that photo and the copy drops out, then this
- * section is hidden, cutting to the video in the same frame. The window then
- * grows from there to fill the screen.
+ * The centre slide is the client's Solarpunks film. It holds for a screen,
+ * then hands over to a full-screen copy of that film, which sits underneath
+ * (pulled up a screen) with its window on the centre slide: the carousel
+ * closes in onto the slide and the copy drops out, then this section is
+ * hidden, cutting to the copy in the same frame (and at the same moment in
+ * the film). The window then grows from there to fill the screen and holds,
+ * so the film gets a proper look.
+ *
+ * Then night falls: the film dims to black, and the third video fades up
+ * out of the dark and holds for the footer's curtain. The film pushes in
+ * slowly through its hold and the dim, and night carries that on, settling
+ * back out of the same push as it fades up.
  *
  * The carousel is a native scroll-snap strip, so it swipes and trackpad-scrolls
  * for free; clicking a side photo brings it to the centre. It opens on the
  * middle photo, as in the storyboard.
  */
-const photos = [
+const slides = [
     { src: bike, alt: "A cyclist riding past a solar array on the playa" },
-    { src: station, alt: "Energy Club's Solar Station, with bikes parked around it" },
+    { clip: "solarpunks" as const, label: "The Solarpunks film" },
     { src: crowd, alt: "A crowd dancing at dusk" },
 ];
 
@@ -54,19 +60,31 @@ const COLUMNS = 6;
             data-carousel
             class="relative flex snap-x snap-mandatory gap-3 overflow-x-auto px-[calc((100%-var(--slide))/2)] [--slide:80vw] [scrollbar-width:none] md:[--slide:40vw]"
         >
-            {photos.map(({ src, alt }) => (
+            <!-- The film's slide has no parallax, so it's framed exactly as the
+                 full-screen copy is at the cut -->
+            {slides.map((slide) => (
                 <div
                     data-community-slide
-                    class="aspect-[3/2] w-(--slide) shrink-0 cursor-pointer snap-center overflow-hidden"
+                    class="aspect-[16/9] w-(--slide) shrink-0 cursor-pointer snap-center overflow-hidden"
                 >
-                    <Image
-                        src={src}
-                        alt={alt}
-                        widths={[640, 960, 1280, 1674]}
-                        sizes="(min-width: 768px) 48.4vw, 80vw"
-                        data-parallax="20"
-                        class="size-full object-cover"
-                    />
+                    {"clip" in slide ? (
+                        <MuxClip
+                            clip={slide.clip}
+                            preload="metadata"
+                            aria-label={slide.label}
+                            data-slide-video
+                            class="size-full"
+                        />
+                    ) : (
+                        <Image
+                            src={slide.src}
+                            alt={slide.alt}
+                            widths={[640, 960, 1280, 1674]}
+                            sizes="(min-width: 768px) 48.4vw, 80vw"
+                            data-parallax="20"
+                            class="size-full object-cover"
+                        />
+                    )}
                 </div>
             ))}
         </div>
@@ -90,12 +108,22 @@ const COLUMNS = 6;
     </div>
 </section>
 
-<section data-night data-parallax-root class="relative -mt-[100lvh] h-[250lvh] bg-black">
+<section data-night data-parallax-root class="relative -mt-[100lvh] h-[500lvh] bg-black">
     <!-- The footer's curtain holds this still and lifts its bottom edge -->
     <div data-night-frame class="sticky top-0 h-lvh overflow-hidden">
-        <!-- Clipped by script to the centre photo's frame, which it grows from -->
-        <div data-window class="absolute inset-0">
-            <div data-window-media class="absolute inset-0">
+        <!-- Clipped by script to the centre slide's frame, which it grows from.
+             The film is a 16:9 box the script sizes and scales to just cover
+             the window, so it's framed as the slide frames it. -->
+        <div data-window class="absolute inset-0 will-change-[opacity]">
+            <div data-window-media class="absolute top-1/2 left-1/2">
+                <MuxClip data-solarpunks-video clip="solarpunks" class="size-full" />
+            </div>
+        </div>
+
+        <!-- Night, over the film, faded out until the film has gone to black -->
+        <div data-night-layer class="absolute inset-0 opacity-0 will-change-[opacity]">
+            <!-- Its own box for the push, as the parallax has the video's transform -->
+            <div data-night-push class="absolute inset-0">
                 <MuxClip data-night-video data-parallax clip="night" class="size-full" />
             </div>
         </div>
@@ -190,58 +218,167 @@ const COLUMNS = 6;
         };
     };
 
-    // Third video. Its window starts on the centre photo's frame and grows
-    // to fill the screen.
+    // Videos play only while they're on screen; play() and pause() are only
+    // called on a change
+    const playing = new WeakMap<HTMLVideoElement, boolean>();
+    const setPlaying = (video: HTMLVideoElement, on: boolean) => {
+        if (playing.get(video) === on) return;
+        playing.set(video, on);
+        if (on) video.play().catch(() => {});
+        else video.pause();
+    };
+
+    // The film's slide plays while the carousel is up
+    const slideVideo = community.querySelector<HTMLVideoElement>("[data-slide-video]")!;
+    ScrollTrigger.create({
+        trigger: community,
+        start: "top 50%",
+        end: "top -300%", // hidden from here
+        onToggle: ({ isActive }) => setPlaying(slideVideo, isActive),
+    });
+
+    // The full-screen film. Its window starts on the centre slide's frame and
+    // grows to fill the screen; the film inside is a 16:9 box scaled to just
+    // cover the window, so at the cut it's framed exactly as the slide frames
+    // it. `drift` slides it left (as a share of the screen) as night comes in.
     const section = document.querySelector<HTMLElement>("[data-night]")!;
-    const video = section.querySelector<HTMLVideoElement>("[data-night-video]")!;
-    const nightWindow = section.querySelector<HTMLElement>("[data-window]")!;
+    const filmWindow = section.querySelector<HTMLElement>("[data-window]")!;
+    const filmMedia = section.querySelector<HTMLElement>("[data-window-media]")!;
+    const film = section.querySelector<HTMLVideoElement>("[data-solarpunks-video]")!;
     const night = { grow: 0 };
-    const renderNight = () => {
+    const handoff = { progress: 0 };
+    // The slow push, 0 → 1 each: the film's in, and night's settle back out
+    const PUSH = 0.12;
+    const push = { film: 0, night: 0 };
+
+    const renderFilm = () => {
+        const vw = filmWindow.clientWidth;
+        const vh = filmWindow.clientHeight;
         const r = photoInset();
         const k = 1 - night.grow;
-        nightWindow.style.clipPath = `inset(${r.top * k}px ${r.right * k}px ${r.bottom * k}px ${r.left * k}px)`;
-    };
-    window.addEventListener("resize", renderNight);
-    renderNight();
+        const [top, right, bottom, left] = [r.top * k, r.right * k, r.bottom * k, r.left * k];
+        filmWindow.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
 
-    // The hand-over: the carousel closes in onto the centre photo (the strip
-    // spans the screen, so the photo's side insets are the strip's too) and
+        // The 16:9 box that covers the screen, scaled to cover the window
+        const boxW = Math.max(vw, (vh * 16) / 9);
+        const boxH = (boxW * 9) / 16;
+        const w = vw - left - right;
+        const h = vh - top - bottom;
+        const scale = Math.max(w / boxW, h / boxH) * (1 + PUSH * push.film);
+        const x = left + w / 2 - vw / 2;
+        const y = top + h / 2 - vh / 2;
+        filmMedia.style.width = `${boxW}px`;
+        filmMedia.style.height = `${boxH}px`;
+        filmMedia.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
+    };
+
+    /**
+     * Nightfall: the film dims to black over the first part of the hand-off,
+     * there's a beat of dark, and night fades up over the last part.
+     * FILM_OUT and NIGHT_IN are where those end and start, 0–1.
+     */
+    const nightLayer = section.querySelector<HTMLElement>("[data-night-layer]")!;
+    const nightVideo = section.querySelector<HTMLVideoElement>("[data-night-video]")!;
+    const nightPush = section.querySelector<HTMLElement>("[data-night-push]")!;
+    const FILM_OUT = 0.45;
+    const NIGHT_IN = 0.5;
+    const fade = gsap.parseEase("sine.inOut");
+    const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+    const renderHandoff = () => {
+        const p = handoff.progress;
+        filmWindow.style.opacity = String(1 - fade(clamp01(p / FILM_OUT)));
+        nightLayer.style.opacity = String(fade(clamp01((p - NIGHT_IN) / (1 - NIGHT_IN))));
+        nightPush.style.transform = `scale(${1 + PUSH * (1 - push.night)})`;
+    };
+
+    // The film plays until it's gone to black, night from the dark
+    let sectionActive = false;
+    const syncPlayback = () => {
+        setPlaying(film, sectionActive && handoff.progress < FILM_OUT);
+        setPlaying(nightVideo, sectionActive && handoff.progress > FILM_OUT);
+    };
+    ScrollTrigger.create({
+        trigger: section,
+        start: "top bottom", // as the hand-over starts
+        end: "bottom top",
+        onToggle: ({ isActive }) => {
+            sectionActive = isActive;
+            syncPlayback();
+        },
+    });
+
+    const render = () => {
+        renderFilm();
+        renderHandoff();
+        syncPlayback();
+    };
+    window.addEventListener("resize", render);
+    render();
+
+    // Picks one film player up where the other is, so the cut doesn't jump
+    const syncTime = (to: HTMLVideoElement, from: HTMLVideoElement) => {
+        const t = from.currentTime;
+        if (Number.isFinite(t) && t > 0) to.currentTime = t;
+    };
+
+    // The hand-over: the carousel closes in onto the centre slide (the strip
+    // spans the screen, so the slide's side insets are the strip's too) and
     // the copy drops out. When it ends this section is hidden, leaving the
-    // video's window in the photo's place.
+    // film's window in the slide's place. The full-screen film is put on the
+    // slide's frame of the film as the hand-over starts, a screen before the
+    // cut, so neither one stalls on a seek at the cut itself.
     if (!prefersReducedMotion()) {
         const close = { progress: 0 };
 
         gsap.timeline({
             scrollTrigger: {
                 trigger: community,
-                start: "top -200%", // after a screen's hold
+                start: "top -100%", // after a screen's hold
                 end: "top -300%", // as the frame lets go
                 scrub: true,
+                onEnter: () => syncTime(film, slideVideo),
                 onLeave: () => gsap.set(community, { visibility: "hidden" }),
-                onEnterBack: () => gsap.set(community, { visibility: "visible" }),
+                onEnterBack: () => {
+                    syncTime(slideVideo, film);
+                    gsap.set(community, { visibility: "visible" });
+                },
             },
             onUpdate: () => {
                 const r = photoInset();
                 strip.style.clipPath = `inset(0px ${r.right * close.progress}px 0px ${r.left * close.progress}px)`;
-                // Keeps the video's window on the photo, in case it's moved
+                // Keeps the film's window on the slide, in case it's moved
                 // since (the fonts loading can nudge it)
-                renderNight();
+                renderFilm();
             },
         })
             .to(close, { progress: 1, duration: 1, ease: "expo.inOut" }, 0)
             .to(copy, { y: 40, autoAlpha: 0, duration: 0.4, stagger: 0.05, ease: "power2.in" }, 0);
     }
 
-    ScrollTrigger.create({
-        trigger: section,
-        start: "top 90%",
-        end: "bottom top",
-        onToggle: ({ isActive }) => (isActive ? video.play().catch(() => {}) : video.pause()),
-    });
+    // Shares of the section's scroll, not seconds: the grow, the film's hold
+    // full screen, night falling, and a beat of night before the footer's
+    // curtain (which starts as this section ends)
+    const GROW = 1.2;
+    const HOLD = 1.2;
+    const DIP = 1;
+    const NIGHT_HOLD = 0.8;
 
     if (prefersReducedMotion()) {
+        // Full screen from the start, and a plain cut to night halfway
+        // through where it would have dipped
         night.grow = 1;
-        renderNight();
+        push.night = 1;
+        render();
+        const cut = (GROW + HOLD + DIP / 2) / (GROW + HOLD + DIP + NIGHT_HOLD);
+        ScrollTrigger.create({
+            trigger: section,
+            start: () => `top+=${(section.offsetHeight - innerHeight) * cut} top`,
+            onToggle: ({ isActive }) => {
+                handoff.progress = isActive ? 1 : 0;
+                render();
+            },
+        });
     } else {
         gsap.timeline({
             scrollTrigger: {
@@ -250,7 +387,18 @@ const COLUMNS = 6;
                 end: "bottom bottom",
                 scrub: true,
             },
-            onUpdate: renderNight,
-        }).to(night, { grow: 1, duration: 1.2, ease: "power1.inOut" });
+            onUpdate: render,
+        })
+            .to(night, { grow: 1, duration: GROW, ease: "power1.inOut" })
+            .to(handoff, { progress: 1, duration: DIP, ease: "none" }, `+=${HOLD}`)
+            .to({}, { duration: NIGHT_HOLD })
+            // The film pushes in from full screen until it's gone to black;
+            // night settles from the same push as it fades up and into its hold
+            .to(push, { film: 1, duration: HOLD + DIP * FILM_OUT, ease: "none" }, GROW)
+            .to(
+                push,
+                { night: 1, duration: DIP * (1 - NIGHT_IN) + NIGHT_HOLD, ease: "power2.out" },
+                GROW + HOLD + DIP * NIGHT_IN,
+            );
     }
 </script>
