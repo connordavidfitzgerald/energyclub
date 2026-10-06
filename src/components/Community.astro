@@ -228,14 +228,7 @@ const COLUMNS = 6;
         else video.pause();
     };
 
-    // The film's slide plays while the carousel is up
     const slideVideo = community.querySelector<HTMLVideoElement>("[data-slide-video]")!;
-    ScrollTrigger.create({
-        trigger: community,
-        start: "top 50%",
-        end: "top -300%", // hidden from here
-        onToggle: ({ isActive }) => setPlaying(slideVideo, isActive),
-    });
 
     // The full-screen film. Its window starts on the centre slide's frame and
     // grows to fill the screen; the film inside is a 16:9 box scaled to just
@@ -322,6 +315,18 @@ const COLUMNS = 6;
         if (Number.isFinite(t) && t > 0) to.currentTime = t;
     };
 
+    // The film's slide plays while the carousel is up, and on for a screen
+    // after it's hidden. Scrolling back up, that screen is where it's put
+    // back on the full-screen film's frame, so the seek is done (and its
+    // poster gone) well before the cut back to it.
+    ScrollTrigger.create({
+        trigger: community,
+        start: "top 50%",
+        end: "top -400%", // a screen past the cut
+        onToggle: ({ isActive }) => setPlaying(slideVideo, isActive),
+        onEnterBack: () => syncTime(slideVideo, film),
+    });
+
     // The hand-over: the carousel closes in onto the centre slide (the strip
     // spans the screen, so the slide's side insets are the strip's too) and
     // the copy drops out. When it ends this section is hidden, leaving the
@@ -339,10 +344,7 @@ const COLUMNS = 6;
                 scrub: true,
                 onEnter: () => syncTime(film, slideVideo),
                 onLeave: () => gsap.set(community, { visibility: "hidden" }),
-                onEnterBack: () => {
-                    syncTime(slideVideo, film);
-                    gsap.set(community, { visibility: "visible" });
-                },
+                onEnterBack: () => gsap.set(community, { visibility: "visible" }),
             },
             onUpdate: () => {
                 const r = photoInset();
